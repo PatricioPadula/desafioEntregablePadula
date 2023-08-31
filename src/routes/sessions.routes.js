@@ -1,52 +1,51 @@
 import { Router } from "express";
 import { usersService } from "../daos/index.js";
+import { createHash, isValidPassword } from "../utils.js";
+import passport from "passport";
 
 const router = Router();
 
-router.post("/signup", async(req,res)=>{
-    try {
-        const signupForm = req.body;
-        //verifico si el usuario ya se registro
-        const user = await usersService.getByEmail(signupForm.email);
-        if(user){
-            res.render("signup",{error:"el usuario ya esta registrado"});
-        }
-        const result = await usersService.save(signupForm);
-        res.render("login",{message:"usuario registrado"});
-    } catch (error) {
-        res.render("signup",{error:error.message});
-    }
+router.post("/signup", passport.authenticate("signupStrategy", {
+    failureRedirect:"/api/sessions/fail-signup"
+}), (req,res)=>{
+    res.render("login",{message:"usuario registrado"});
 });
 
-router.post("/login", async(req,res)=>{
-    try {
-        const loginForm = req.body;
-        //verifico si el usuario ya se registro
-        const user = await usersService.getByEmail(loginForm.email);
-        if(!user){
-            return res.render("login",{error:"el usuario no se ha registrado"});
-        }
-        //si el usuario existe, validar la contraseña
-        if(user.password === loginForm.password){
-            //si la contraseña es valida creamos la session
-            req.session.userInfo = {
-                first_name:user.first_name,
-                email:user.email
-            };
-            res.redirect("/perfil");
-        }else{
-            return res.render("login",{error:"Credenciales invalidas"});
-        }
-    } catch (error) {
-        res.render("signup",{error:error.message});
-    }
+router.get("/fail-signup",(req,res)=>{
+    res.render("signup",{error:"No se pudo registrar el usuario"});
+});
+
+router.post("/login", passport.authenticate("loginStrategy", {
+    failureRedirect:"/api/sessions/fail-login"
+}), (req,res)=>{
+    res.redirect("/perfil");
+});
+
+router.get("/fail-login", (req,res)=>{
+    res.render("login",{error:"Credenciales invalidas"});
+});
+
+router.get("/loginGithub", passport.authenticate("githubLoginStrategy"));
+
+router.get("/github-callback", passport.authenticate("githubLoginStrategy",{
+    failureRedirect:"/api/sessions/fail-signup"
+}),(req,res)=>{
+    res.redirect("/perfil");
 });
 
 router.get("/logout", (req,res)=>{
-    req.session.destroy(error=>{
-        if(error) return res.render("profile",{user: req.session.userInfo, message:"No se pudo cerrar la session"});
-        res.redirect("/");
+    req.logOut(error=>{
+        if(error){
+            return res.render("profile",{user: req.user, error:"No se pudo cerrar la session"});
+        } else{
+            //req.session.destroy elimina la sesion de la base de datos
+            req.session.destroy(error=>{
+                if(error) return res.render("profile",{user: req.session.userInfo, message:"No se pudo cerrar la session"});
+                res.redirect("/");
+            })
+        }
     })
 });
+
 
 export {router as sessionsRouter};

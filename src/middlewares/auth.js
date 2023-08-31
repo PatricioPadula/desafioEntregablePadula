@@ -1,12 +1,12 @@
 export const checkUserAuthenticated = (req,res,next) =>{
-    if(req.session?.userInfo){
+    if(req.user){
         next();
     }else{
         res.redirect("/login");
     }
 };
 export const showLoginView = (req,res,next) =>{
-    if(req.session?.userInfo){
+    if(req.user){
         res.redirect("/perfil");
     }else{
         next();

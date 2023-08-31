@@ -7,6 +7,8 @@ import session from "express-session";
 import MongoStore from "connect-mongo";
 import { viewsRouter } from "./routes/views.routes.js";
 import { sessionsRouter } from "./routes/sessions.routes.js";
+import { initializatePassport } from "./config/passportConfig.js";
+import passport from "passport";
 
 
 const port = config.server.port;
@@ -28,6 +30,12 @@ app.use(session({
     resave:true,
     saveUninitialized:true
 }));
+
+//configuración de passport
+initializatePassport();
+app.use(passport.initialize());
+app.use(passport.session());
+
 
 //configuración de handlebars
 app.engine('.hbs', engine({extname: '.hbs'}));
